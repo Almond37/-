@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>破防番茄钟 · 茄姐的防御战</title>
+<style>
+/* === 设计令牌 === */
+:root{
+  --cream:#F5EFE0; --cream-2:#EFE6D2; --paper:#FAF6EC;
+  --tomato:#D62828; --tomato-deep:#9B1C1C; --tomato-soft:#F1A0A0; --tomato-light:#E64646;
+  --ink:#1B1B1B; --ink-2:#3A3A3A; --muted:#8A8275;
+  --leaf:#4B7A3A; --leaf-deep:#2F5226; --leaf-light:#6A9A55;
+  --gold:#C9A24B; --gold-light:#E5C570;
+  --border:#DCD3BD; --dash:#E5DCC2;
+  --shadow:0 6px 18px rgba(40,30,10,.08),0 2px 6px rgba(40,30,10,.06);
+  --radius:22px; --radius-sm:14px;
+  --font:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:var(--font);background:var(--cream);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(rgba(120,90,40,.04) 1px,transparent 1px);background-size:4px 4px;z-index:0}
+
+/* === 语气选择页 === */
+.tone-page{position:fixed;inset:0;background:linear-gradient(180deg,var(--cream) 0%,var(--cream-2) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:100}
+.tone-page .title-row{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.tone-page .title-row .mini-tomato{width:46px;height:54px}
+.tone-page h1{font-size:34px;letter-spacing:3px;color:var(--tomato-deep)}
+.tone-page .sub{color:var(--muted);margin-bottom:36px;font-size:14px;letter-spacing:1px}
+.tone-cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:740px;width:100%}
+.tone-card{background:var(--paper);border:2px solid transparent;border-radius:var(--radius);padding:30px 24px;cursor:pointer;box-shadow:var(--shadow);transition:all .2s ease;text-align:center;position:relative;overflow:hidden}
+.tone-card::after{content:'';position:absolute;top:-30px;right:-30px;width:80px;height:80px;border-radius:50%;opacity:.08}
+.tone-card.sharp::after{background:var(--tomato)}
+.tone-card.wacky::after{background:var(--leaf)}
+.tone-card:hover{transform:translateY(-4px);border-color:var(--tomato)}
+.tone-card.sharp:hover{border-color:var(--tomato)}
+.tone-card.wacky:hover{border-color:var(--leaf)}
+.tone-card .label{font-size:22px;font-weight:700;margin-bottom:6px}
+.tone-card.sharp .label{color:var(--tomato-deep)}
+.tone-card.wacky .label{color:var(--leaf-deep)}
+.tone-card .hint{font-size:11px;color:var(--muted);margin-bottom:14px;letter-spacing:1px}
+.tone-card .example{color:var(--ink-2);font-size:14px;line-height:1.7;font-style:italic;min-height:48px}
+@media(max-width:600px){.tone-cards{grid-template-columns:1fr}}
+
+/* === 主界面 === */
+.app{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:20px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.topbar .brand{display:flex;align-items:center;gap:10px}
+.topbar .brand .logo{width:34px;height:40px}
+.topbar .brand h1{font-size:20px;letter-spacing:2px;color:var(--tomato-deep)}
+.topbar .brand .tone-tag{font-size:11px;color:var(--muted);background:var(--cream-2);padding:2px 8px;border-radius:999px;margin-left:6px}
+.topbar .nav{display:flex;gap:8px}
+.topbar .nav button{background:var(--paper);border:1px solid var(--border);border-radius:999px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:var(--font);color:var(--ink-2);transition:all .15s}
+.topbar .nav button.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.topbar .nav button:hover{transform:translateY(-1px)}
+
+.bento{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(140px,auto);gap:16px}
+.card{background:var(--paper);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .2s ease}
+.card h3{font-size:12px;color:var(--muted);margin-bottom:12px;letter-spacing:2px;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase}
+.card h3 .tag{background:var(--cream-2);padding:2px 8px;border-radius:999px;font-size:11px;color:var(--ink-2);text-transform:none;letter-spacing:0}
+
+/* 番茄大卡 */
+.tomato-card{grid-column:span 2;grid-row:span 2;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 18px 18px;background:radial-gradient(circle at 50% 25%,#FFF8E8 0%,var(--paper) 65%)}
+.tomato-stage{width:200px;height:240px;position:relative;margin-bottom:6px}
+.tomato-stage svg{width:100%;height:100%;overflow:visible}
+.tomato-stage .quote-bubble{position:absolute;top:6px;right:-16px;background:var(--paper);border:1px solid var(--border);border-radius:12px;padding:6px 10px;font-size:12px;max-width:140px;box-shadow:var(--shadow);z-index:2;line-height:1.4}
+.tomato-stage .quote-bubble::before{content:'';position:absolute;left:-6px;top:14px;width:10px;height:10px;background:var(--paper);border-left:1px solid var(--border);border-bottom:1px solid var(--border);transform:rotate(22deg)}
+.countdown{font-size:48px;font-weight:700;letter-spacing:2px;font-variant-numeric:tabular-nums;margin-top:4px;color:var(--tomato-deep);line-height:1}
+.countdown.resting{color:var(--leaf-deep)}
+.countdown.shake{animation:shake .3s ease infinite}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+.stage-label{font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:1px}
+.timer-controls{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+.btn{background:var(--tomato);color:#fff;border:none;padding:10px 22px;border-radius:999px;font-size:14px;cursor:pointer;font-family:var(--font);font-weight:600;transition:all .15s;box-shadow:0 3px 10px rgba(214,40,40,.3)}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0)}
+.btn.secondary{background:var(--paper);color:var(--ink);border:1px solid var(--border);box-shadow:none}
+.btn.danger{background:var(--ink);box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px dashed #C5BBA1;box-shadow:none;padding:6px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* 破防值 */
+.break-card .break-bar-wrap{height:14px;background:var(--cream-2);border-radius:999px;overflow:hidden;margin:8px 0 4px;position:relative}
+.break-bar{height:100%;background:linear-gradient(90deg,var(--leaf) 0%,#E0B85A 55%,var(--tomato) 100%);transition:width .6s ease;width:100%}
+.break-card .metric{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2);margin-top:6px}
+.break-card .metric b{color:var(--tomato-deep);font-size:22px;font-weight:700}
+.break-card .hint{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
+
+/* 专注统计 */
+.stat-mini .stats-row{display:flex;justify-content:space-around;margin-top:6px}
+.stat-mini .stat-item{text-align:center}
+.stat-mini .stat-item .v{font-size:24px;font-weight:700;color:var(--tomato-deep);line-height:1}
+.stat-mini .stat-item .l{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* 语录卡 */
+.quote-card .quote-text{font-size:14px;line-height:1.7;min-height:60px;color:var(--ink);font-style:italic}
+.quote-card .quote-actions{display:flex;gap:6px;margin-top:10px}
+
+/* 勋章墙 */
+.badge-wall{grid-column:span 2}
+.badges{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-behavior:smooth}
+.badges::-webkit-scrollbar{height:6px}
+.badges::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.badge{flex:0 0 78px;text-align:center;cursor:default;transition:transform .2s}
+.badge:hover{transform:translateY(-2px)}
+.badge svg{width:64px;height:64px;display:block;margin:0 auto}
+.badge .name{font-size:10px;margin-top:6px;color:var(--muted);line-height:1.3;letter-spacing:.5px}
+.badge.locked svg{filter:grayscale(1) opacity(.4)}
+.badge.unlocked svg{filter:drop-shadow(0 2px 4px rgba(201,162,75,.45))}
+.badge.unlocked .name{color:var(--ink);font-weight:600}
+.badge.just-unlocked{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+/* 任务清单 */
+.tasks .task{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--dash);font-size:13px}
+.tasks .task:last-child{border-bottom:none}
+.tasks .task input[type=checkbox]{width:16px;height:16px;accent-color:var(--tomato);cursor:pointer;flex-shrink:0}
+.tasks .task.done span{text-decoration:line-through;color:var(--muted)}
+.tasks .task .pomo{margin-left:auto;font-size:11px;color:var(--muted);background:var(--cream-2);padding:2px 6px;border-radius:999px;flex-shrink:0}
+.tasks .task .del{color:var(--muted);cursor:pointer;font-size:14px;border:none;background:none;flex-shrink:0;padding:0 2px}
+.tasks .task .del:hover{color:var(--tomato)}
+.task-add{display:flex;gap:6px;margin-top:10px}
+.task-add input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--cream)}
+.task-add input:focus{outline:none;border-color:var(--tomato)}
+.task-add .btn{padding:8px 14px;font-size:12px}
+
+/* 白噪音 */
+.noise-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.noise-btn{border:1px solid var(--border);background:var(--cream);border-radius:10px;padding:8px;font-size:12px;cursor:pointer;font-family:var(--font);text-align:center;transition:all .15s;color:var(--ink-2)}
+.noise-btn:hover{transform:translateY(-1px)}
+.noise-btn.on{background:var(--leaf);color:#fff;border-color:var(--leaf)}
+.noise-vol{width:100%;margin-top:8px;accent-color:var(--leaf);height:4px}
+
+/* 破防日志 */
+.log-list{max-height:180px;overflow-y:auto;font-size:12px;line-height:1.6}
+.log-list::-webkit-scrollbar{width:4px}
+.log-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.log-list .entry{padding:6px 0;border-bottom:1px dashed var(--dash)}
+.log-list .entry .time{color:var(--muted);font-size:11px;display:block;margin-bottom:2px}
+.log-list .entry .text{color:var(--ink-2)}
+.log-empty{color:var(--muted);font-size:12px;text-align:center;padding:20px 0;font-style:italic}
+
+/* 统计页 */
+.stats-view{display:none}
+.stats-view.active{display:block}
+.stats-tabs{display:flex;gap:6px;margin-bottom:16px}
+.stats-tabs button{flex:1;padding:9px;background:var(--paper);border:1px solid var(--border);border-radius:999px;cursor:pointer;font-family:var(--font);font-size:13px;color:var(--ink-2);transition:all .15s}
+.stats-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.stat-block{background:var(--paper);border-radius:var(--radius-sm);padding:16px;text-align:center;box-shadow:var(--shadow)}
+.stat-block .v{font-size:28px;font-weight:700;color:var(--tomato-deep);line-height:1}
+.stat-block .l{font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:1px}
+.chart-card{background:var(--paper);border-radius:var(--radius-sm);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.chart-card h4{font-size:13px;margin-bottom:12px;color:var(--ink-2);letter-spacing:1px}
+.chart-card svg{width:100%;height:180px;display:block}
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:8px}
+.heatmap .cell{aspect-ratio:1;border-radius:3px;background:var(--cream-2)}
+.heatmap .cell.l1{background:#F5D5D5}.heatmap .cell.l2{background:#E89090}.heatmap .cell.l3{background:#D62828}
+
+/* 破防演出层 */
+.overlay{position:fixed;inset:0;background:rgba(20,15,5,.65);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.overlay.show{display:flex;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.overlay .panel{background:var(--paper);border-radius:var(--radius);padding:28px 32px 24px;max-width:420px;text-align:center;position:relative;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.overlay .panel.shake{animation:bigShake .55s ease}
+@keyframes bigShake{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-6px,2px) rotate(-1deg)}40%{transform:translate(6px,-2px) rotate(1deg)}60%{transform:translate(-4px,1px) rotate(-.5deg)}80%{transform:translate(4px,-1px) rotate(.5deg)}}
+.overlay .panel .character{width:140px;height:170px;margin:0 auto 10px}
+.overlay .panel .title{font-size:22px;font-weight:700;color:var(--tomato-deep);margin-bottom:6px;letter-spacing:1px}
+.overlay .panel .quote{font-size:14px;color:var(--ink-2);line-height:1.6;margin-bottom:16px;font-style:italic;padding:0 8px}
+.overlay .panel.rest .title{color:var(--leaf-deep)}
+.particle{position:absolute;pointer-events:none;border-radius:50%}
+
+/* 设置弹窗 */
+.settings-modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:250}
+.settings-modal.show{display:flex}
+.settings-modal .panel{background:var(--paper);border-radius:var(--radius);padding:24px;max-width:380px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.settings-modal h3{margin-bottom:14px;font-size:16px;letter-spacing:1px}
+.settings-modal .row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--dash)}
+.settings-modal .row:last-of-type{border-bottom:none}
+.settings-modal .row label{font-size:13px;color:var(--ink-2)}
+.settings-modal .row select,.settings-modal .row input[type=number]{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-family:var(--font);background:var(--cream);width:80px;text-align:center;font-size:13px}
+.settings-modal .row input[type=range]{width:120px;accent-color:var(--tomato)}
+.settings-modal .actions{display:flex;gap:8px;margin-top:16px}
+.settings-modal .actions .btn{flex:1}
+
+/* 通知 */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;z-index:300;transition:transform .35s ease;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:90%;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.badge{background:linear-gradient(135deg,var(--gold) 0%,var(--tomato-deep) 100%)}
+
+/* 响应式 */
+@media(max-width:880px){
+  .bento{grid-template-columns:repeat(2,1fr)}
+  .tomato-card{grid-column:span 2;grid-row:span 1}
+  .badge-wall{grid-column:span 2}
+  .stats-grid{grid-template-columns:1fr}
+  .countdown{font-size:38px}
+  .tomato-stage{width:170px;height:200px}
+}
+@media(max-width:420px){
+  .topbar .brand h1{font-size:16px}
+  .countdown{font-size:32px}
+}
+</style>
+</head>
+<body>
+
+<!-- 语气选择页 -->
+<div class="tone-page" id="tonePage">
+  <div class="title-row">
+    <svg class="mini-tomato" viewBox="0 0 60 70"><path d="M30,8 C18,4 8,12 8,28 C8,46 18,62 30,66 C42,62 52,46 52,28 C52,12 42,4 30,8 Z" fill="#D62828"/><path d="M22,10 C16,4 10,8 12,18 M38,10 C44,4 50,8 48,18 M30,4 C28,0 26,2 30,8 C34,2 32,0 30,4 Z" fill="#4B7A3A"/><circle cx="22" cy="28" r="2" fill="#1B1B1B"/><circle cx="38" cy="28" r="2" fill="#1B1B1B"/><path d="M24,38 Q30,42 36,38" stroke="#7A1818" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    <h1>破防番茄钟</h1>
+  </div>
+  <div class="sub">茄姐已就位 · 请选择今日的言语刀法</div>
+  <div class="tone-cards">
+    <div class="tone-card sharp" data-tone="sharp">
+      <div class="label">扎心真实</div>
+      <div class="hint">每一刀都见血</div>
+      <div class="example">「你不是不想努力，你只是一直在等一个不开始的理由。」</div>
+    </div>
+    <div class="tone-card wacky" data-tone="wacky">
+      <div class="label">无厘头搞笑</div>
+      <div class="hint">笑着笑着就哭了</div>
+      <div class="example">「番茄：我熟了，你还没开始。」</div>
+    </div>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div class="app" id="app" style="display:none">
+  <div class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 40 48"><path d="M20,6 C12,3 5,9 5,20 C5,34 12,44 20,46 C28,44 35,34 35,20 C35,9 28,3 20,6 Z" fill="#D62828"/><path d="M14,8 C9,3 4,7 7,14 M26,8 C31,3 36,7 33,14 M20,3 C18,0 16,1 20,6 C24,1 22,0 20,3 Z" fill="#4B7A3A"/></svg>
+      <h1>破防番茄钟</h1>
+      <span class="tone-tag" id="toneTag">扎心真实</span>
+    </div>
+    <div class="nav">
+      <button data-view="main" class="active" id="navMain">主界面</button>
+      <button data-view="stats" id="navStats">统计</button>
+      <button id="navSettings">设置</button>
+    </div>
+  </div>
+
+  <!-- 主界面视图 -->
+  <div class="main-view" id="mainView">
+    <div class="bento">
+      <!-- 番茄大卡 -->
+      <div class="card tomato-card" id="tomatoCard">
+        <div class="tomato-stage" id="tomatoStage"></div>
+        <div class="countdown" id="countdown">25:00</div>
+        <div class="stage-label" id="stageLabel">茄姐·备战</div>
+        <div class="timer-controls">
+          <button class="btn" id="startBtn">开始防御</button>
+          <button class="btn danger" id="breakBtn" disabled>我破防了</button>
+          <button class="btn ghost" id="skipBtn" style="display:none">跳过</button>
+        </div>
+      </div>
+
+      <!-- 今日语录 -->
+      <div class="card quote-card">
+        <h3>今日语录 <span class="tag" id="quoteTag">可刷新</span></h3>
+        <div class="quote-text" id="quoteText"></div>
+        <div class="quote-actions">
+          <button class="btn ghost" id="refreshQuote">换一条</button>
+          <button class="btn ghost" id="favQuote">收藏</button>
+        </div>
+      </div>
+
+      <!-- 破防值 -->
+      <div class="card break-card">
+        <h3>破防值 <span class="tag" id="breakTag">满血</span></h3>
+        <div class="break-bar-wrap"><div class="break-bar" id="breakBar"></div></div>
+        <div class="metric"><span>当前防线</span><b id="breakVal">100</b></div>
+        <div class="hint" id="breakHint">茄姐状态：稳如老狗</div>
+      </div>
+
+      <!-- 专注统计 -->
+      <div class="card stat-mini">
+        <h3>专注统计 <span class="tag" id="todayDate">今日</span></h3>
+        <div class="stats-row">
+          <div class="stat-item"><div class="v" id="todayPomos">0</div><div class="l">番茄</div></div>
+          <div class="stat-item"><div class="v" id="todayBreaks">0</div><div class="l">破防</div></div>
+          <div class="stat-item"><div class="v" id="todayLongest">0</div><div class="l">最长守住</div></div>
+        </div>
+      </div>
+
+      <!-- 勋章墙 -->
+      <div class="card badge-wall">
+        <h3>勋章墙 <span class="tag"><span id="badgeCount">0</span>/10</span></h3>
+        <div class="badges" id="badges"></div>
+      </div>
+
+      <!-- 任务清单 -->
+      <div class="card tasks">
+        <h3>任务清单 <span class="tag">绑定番茄</span></h3>
+        <div id="taskList"></div>
+        <div class="task-add">
+          <input type="text" id="taskInput" placeholder="今天要守住什么？">
+          <button class="btn" id="addTask">加</button>
+        </div>
+      </div>
+
+      <!-- 白噪音 -->
+      <div class="card">
+        <h3>白噪音 <span class="tag" id="noiseTag">关闭</span></h3>
+        <div class="noise-grid">
+          <button class="noise-btn" data-noise="rain">雨声</button>
+          <button class="noise-btn" data-noise="keyboard">键盘</button>
+          <button class="noise-btn" data-noise="ocean">海浪</button>
+          <button class="noise-btn" data-noise="cafe">咖啡馆</button>
+        </div>
+        <input type="range" class="noise-vol" id="noiseVol" min="0" max="100" value="40">
+      </div>
+
+      <!-- 破防日志 -->
+      <div class="card">
+        <h3>破防日志 <span class="tag" id="logCount">0 条</span></h3>
+        <div class="log-list" id="logList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 统计视图 -->
+  <div class="stats-view" id="statsView">
+    <div class="stats-tabs">
+      <button data-tab="today" class="active">今日</button>
+      <button data-tab="week">本周</button>
+      <button data-tab="month">本月</button>
+    </div>
+    <div id="statsContent"></div>
+  </div>
+</div>
+
+<!-- 破防演出层 -->
+<div class="overlay" id="overlay">
+  <div class="panel" id="overlayPanel">
+    <div class="character" id="overlayCharacter"></div>
+    <div class="title" id="overlayTitle"></div>
+    <div class="quote" id="overlayQuote"></div>
+    <button class="btn" id="overlayClose">承认失败</button>
+  </div>
+</div>
+
+<!-- 休息演出层 -->
+<div class="overlay" id="restOverlay">
+  <div class="panel rest" id="restPanel">
+    <div class="character" id="restCharacter"></div>
+    <div class="title" id="restTitle">守住了一回合</div>
+    <div class="quote" id="restQuote"></div>
+    <button class="btn secondary" id="restClose">继续防御</button>
+  </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="settings-modal" id="settingsModal">
+  <div class="panel">
+    <h3>设置</h3>
+    <div class="row">
+      <label>语气风格</label>
+      <select id="setTone">
+        <option value="sharp">扎心真实</option>
+        <option value="wacky">无厘头搞笑</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>专注时长（分钟）</label>
+      <input type="number" id="setWork" min="15" max="60" value="25">
+    </div>
+    <div class="row">
+      <label>休息时长（分钟）</label>
+      <input type="number" id="setRest" min="3" max="20" value="5">
+    </div>
+    <div class="row">
+      <label>自动进入休息</label>
+      <input type="checkbox" id="setAutoRest" checked>
+    </div>
+    <div class="row">
+      <label>清空全部数据</label>
+      <button class="btn ghost" id="resetData">清空</button>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" id="settingsCancel">取消</button>
+      <button class="btn" id="settingsSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 通知 -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   破防番茄钟 · 主逻辑
+   ============================================================ */
+
+// ---------- 1. 数据与常量 ----------
+const STORAGE_KEY = 'poFangTomatoClock_v1';
+
+const QUOTES = {
+  sharp: [
+    '你不是不想努力，你只是一直在等一个不开始的理由。',
+    '把"明天再说"说了一百遍，明天就成了你人生的全部。',
+    '焦虑不是因为时间不够，是因为你清楚地知道自己在浪费时间。',
+    '你害怕的不是失败，是发现自己连试都没试过。',
+    '手机屏幕亮了一整晚，你只是躲在里面不想面对自己。',
+    '所有"等一下"都在偷偷扣你的命。',
+    '你的拖延正在替你做选择，而它选的永远是放弃。',
+    '你不是没有时间，你只是把时间都给了不重要的事。',
+    '一年后你会感谢现在的自己吗？大概率不会。',
+    '所谓自由职业，其实是自由地让自己失业。',
+    '梦想很贵，你今天又没付款。',
+    '你以为的极限，只是别人觉得的起点。',
+    '你的手机比你更努力，它至少在持续充电。',
+    '所谓成熟，就是不再用"我尽力了"骗自己。',
+    '深夜不睡的人，多半在逃避明天的自己。',
+    '你刷的不是手机，是你逃避现实的工具。'
+  ],
+  wacky: [
+    '番茄：我熟了，你还没开始。',
+    '茄姐的眼神能杀人，可惜你早已心死。',
+    '你的专注时长比金鱼还短，但金鱼至少在水里游。',
+    '25分钟而已，比你刷完一个视频列表还短。',
+    '茄姐：你这是专注？我还以为你在打坐。',
+    '再不开始，番茄就要变成番茄酱了。',
+    '茄姐抱臂不是为了装酷，是为了挡住你这种不努力的人。',
+    '你拖延的样子，连番茄都觉得辣眼睛。',
+    '番茄看着你，番茄叹了口气，番茄决定再给你一次机会。',
+    '你以为番茄不会累？番茄累的时候会变成番茄汁。',
+    '茄姐：我等你的进度，等得叶子都秃了。',
+    '专注 25 分钟，番茄才不会笑话你。专注 25 秒，番茄要笑出汁。',
+    '番茄的红，是被你气的。',
+    '你不是在工作，你是在跟番茄比谁先眨眼。',
+    '番茄决定原谅你，但只原谅这一次。',
+    '茄姐翻了个白眼，白眼比番茄还红。'
+  ]
+};
+
+const BREAKDOWN_QUOTES = {
+  sharp: [
+    '你看，又一次。茄姐早就料到了。',
+    '破防从来不是一瞬间的，是你无数次"再等一下"叠出来的。',
+    '茄姐没说话，但她的眼神已经替你认输了。',
+    '25分钟你都守不住，谈什么大事。',
+    '这次破防，比你上一次来得更早。',
+    '承认吧，你不是累，你只是不想开始。',
+    '茄姐摘下了眼镜，她不想看你这副样子。',
+    '你的专注力，连一颗番茄都看不起。'
+  ],
+  wacky: [
+    '番茄：噗——汁都喷出来了。',
+    '茄姐：我裂了，你满意了？',
+    '番茄表皮渗汁，正在呼叫救援。',
+    '看吧，番茄又破了一个。今天的番 feci 茄产量+1。',
+    '茄姐决定躺平，比你专注的姿态还认真。',
+    '番茄炸了，番茄汁溅了你一脸。',
+    '茄姐：这种破防频率，我考虑换个主人。',
+    '番茄裂开的声音，比你的进度还响亮。'
+  ]
+};
+
+const REST_QUOTES = {
+  sharp: [
+    '茄姐摘下眼镜：「还行，勉强合格。」',
+    '她没夸你，但没骂你，就是最高评价。',
+    '5分钟回血，别又刷起手机。',
+    '你以为这是奖励？这是茄姐的喘息时间。',
+    '守住了一回合，不代表你能守住下一回合。'
+  ],
+  wacky: [
+    '茄姐撩了撩头发：「勉强合格，下次努力。」',
+    '番茄擦了擦汁，又变回了完整的番茄。',
+    '茄姐换上了金牌，虽然是你该戴的那块。',
+    '5分钟，足够你跟番茄互相嫌弃一遍。',
+    '茄姐说：还行，没让我裂开。'
+  ]
+};
+
+const REBORN_QUOTES = {
+  sharp: ['还行，勉强合格。','下次别让我等这么久。','看，你做得到。'],
+  wacky: ['茄姐甩了甩头发：勉强合格。','番茄又圆了，你也该动起来了。','茄姐：合格，但仅此一次。']
+};
+
+const BADGES = [
+  { id:'first', name:'首位守擂', desc:'完成第1个番茄' },
+  { id:'streak3', name:'三日不断', desc:'连续3天有番茄' },
+  { id:'streak7', name:'七日不动如山', desc:'连续7天有番茄' },
+  { id:'break1', name:'破防新手', desc:'第1次破防' },
+  { id:'break30', name:'破防大师', desc:'累计破防30次' },
+  { id:'midnight', name:'深夜守卫', desc:'0点后完成番茄' },
+  { id:'comeback', name:'立刻反杀', desc:'破防后1分钟内重启' },
+  { id:'k1000', name:'千分钟', desc:'累计专注1000分钟' },
+  { id:'white5', name:'白噪信徒', desc:'连续5次开白噪音完成' },
+  { id:'full20', name:'满勤一月', desc:'当月20天有番茄' }
+];
+
+// 状态枚举
+const STAGE = { READY:'ready', STEADY:'steady', ALERT:'alert', BROKEN:'broken', REBORN:'reborn', REST:'rest' };
+
+// ---------- 2. 状态管理 ----------
+let state = loadState();
+
+function defaultState(){
+  return {
+    tone:'sharp',
+    tasks:[],
+    stats:{
+      today:{ date:today(), pomodoros:0, breakdowns:0, longestHold:0, whiteNoiseSessions:0 },
+      history:{}, // {YYYY-MM-DD: {pomodoros, breakdowns, longestHold, whiteNoise}}
+      allTime:{ totalMinutes:0, totalBreakdowns:0, streak:0, lastActiveDate:null, whiteNoiseStreak:0, monthActiveDays:{} },
+      badgeProgress:{ pomoStreak:0, whiteNoiseStreak:0, lastBreakdownAt:0, comeback:0 }
+    },
+    logs:[], // [{time, text, tone}]
+    badges:[],
+    favs:[],
+    settings:{ workMin:25, restMin:5, autoRest:true },
+    todayQuoteIdx:0,
+    todayQuoteDate:null
+  };
+}
+
+function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function nowHM(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const s=JSON.parse(raw);
+    return Object.assign(defaultState(), s);
+  }catch(e){ return defaultState(); }
+}
+function saveState(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
+
+// 检查日期切换，把昨日的今日数据归档到 history
+function rolloverIfNeeded(){
+  const t=today();
+  if(state.stats.today.date!==t){
+    // 归档
+    if(state.stats.today.date){
+      state.stats.history[state.stats.today.date]={
+        pomodoros:state.stats.today.pomodoros,
+        breakdowns:state.stats.today.breakdowns,
+        longestHold:state.stats.today.longestHold,
+        whiteNoise:state.stats.today.whiteNoiseSessions
+      };
+    }
+    state.stats.today={date:t,pomodoros:0,breakdowns:0,longestHold:0,whiteNoiseSessions:0};
+    state.todayQuoteDate=null;
+    saveState();
+  }
+  // 语录日切换
+  if(state.todayQuoteDate!==t){
+    state.todayQuoteDate=t;
+    state.todayQuoteIdx=Math.floor(Math.random()*QUOTES[state.tone].length);
+    saveState();
+  }
+}
+
+// ---------- 3. 茄姐 SVG ----------
+// 5 状态 SVG：备战/稳态/警戒/破防/重生 + 休息
+function tomatoSVG(stage, withBubble, bubbleText){
+  const leavesNormal = `
+    <path d="M100,18 C72,2 38,12 32,55 C50,32 78,38 95,48 Z" fill="#4B7A3A"/>
+    <path d="M100,18 C128,2 162,12 168,55 C150,32 122,38 105,48 Z" fill="#4B7A3A"/>
+    <path d="M82,38 C66,52 56,76 62,98 C75,76 86,68 96,62 Z" fill="#3F6A30"/>
+    <path d="M118,38 C134,52 144,76 138,98 C125,76 114,68 104,62 Z" fill="#3F6A30"/>
+    <path d="M100,14 C96,4 92,2 100,-2 C108,2 104,4 100,14 Z" fill="#5A8A48"/>`;
+  const leavesFlip = leavesNormal.replace(/M82,38[\s\S]*?Z" fill="#3F6A30"/, '<path d="M85,38 C70,55 64,82 75,108 C85,82 92,72 99,66 Z" fill="#3F6A30" transform="rotate(-8 100 50)"');
+  const leavesTremble = leavesNormal;
+
+  const body = `<path d="M75,55 C50,55 38,95 38,140 C38,200 60,248 100,256 C140,248 162,200 162,140 C162,95 150,55 125,55 Q100,50 75,55 Z" fill="#D62828"/>`;
+  const bodyHighlight = `<ellipse cx="78" cy="105" rx="11" ry="22" fill="#E64646" opacity=".55"/>`;
+  const belt = `<rect x="38" y="180" width="124" height="7" fill="#C9A24B"/><rect x="38" y="180" width="124" height="2" fill="#E5C570"/><rect x="92" y="180" width="16" height="7" fill="#9B7A2B"/>`;
+  const glasses = `
+    <g stroke="#1B1B1B" stroke-width="1.6" fill="none" opacity=".85">
+      <circle cx="80" cy="118" r="11"/><circle cx="120" cy="118" r="11"/>
+      <line x1="91" y1="118" x2="109" y2="118" stroke-width="1.4"/>
+      <line x1="69" y1="116" x2="58" y2="114"/>
+      <line x1="131" y1="116" x2="142" y2="114"/>
+    </g>`;
+  const mole = `<circle cx="115" cy="138" r="1.4" fill="#3A1A1A"/>`;
+  const earring = `
+    <line x1="156" y1="105" x2="161" y2="124" stroke="#C9A24B" stroke-width="1.2"/>
+    <circle cx="163" cy="127" r="4.5" fill="#E5C570" stroke="#9B7A2B" stroke-width=".5"/>
+    <path d="M161,125 C163,123 165,125 163,128 Z" fill="#D62828"/>`;
+
+  // 不同状态的部件
+  let leaves, eyes, brows, lips, arms, extras='';
+  let bubble=bubbleText?`<div class="quote-bubble">${bubbleText}</div>`:'';
+
+  switch(stage){
+    case STAGE.READY:
+      leaves=leavesNormal;
+      eyes=`<ellipse cx="80" cy="119" rx="3.2" ry="4.2" fill="#1B1B1B"/>
+            <ellipse cx="120" cy="119" rx="3.2" ry="4.2" fill="#1B1B1B"/>
+            <path d="M74,114 Q77,110 80,113" stroke="#1B1B1B" stroke-width="1.2" fill="none"/>
+            <path d="M120,113 Q123,110 126,114" stroke="#1B1B1B" stroke-width="1.2" fill="none"/>`;
+      brows=`<path d="M70,104 Q80,99 90,104" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>
+             <path d="M110,104 Q120,99 130,104" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      lips=`<path d="M90,142 Q100,150 110,142 Q100,146 90,142 Z" fill="#7A1818"/>`;
+      arms=`<g stroke="#9B1C1C" stroke-width="13" stroke-linecap="round" fill="none">
+              <path d="M50,168 Q100,178 150,168"/>
+              <path d="M55,178 Q100,188 145,178"/>
+            </g>
+            <circle cx="50" cy="170" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>
+            <circle cx="150" cy="170" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>`;
+      break;
+    case STAGE.STEADY:
+      leaves=leavesNormal;
+      eyes=`<path d="M72,120 Q80,116 88,120" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M112,120 Q120,116 128,120" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      brows=`<path d="M70,108 L90,107" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round"/>
+             <path d="M110,107 L130,108" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round"/>`;
+      lips=`<line x1="92" y1="143" x2="108" y2="143" stroke="#7A1818" stroke-width="2" stroke-linecap="round"/>`;
+      // 手托腮
+      arms=`<g stroke="#9B1C1C" stroke-width="13" stroke-linecap="round" fill="none">
+              <path d="M155,140 Q140,150 128,148"/>
+            </g>
+            <circle cx="128" cy="146" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>
+            <path d="M128,142 Q134,140 138,144" stroke="#9B1C1C" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      break;
+    case STAGE.ALERT:
+      leaves=leavesTremble;
+      eyes=`<ellipse cx="80" cy="119" rx="3" ry="4" fill="#1B1B1B"/>
+            <ellipse cx="120" cy="119" rx="3" ry="4" fill="#1B1B1B"/>`;
+      brows=`<path d="M68,108 L90,113" stroke="#1B1B1B" stroke-width="2.2" stroke-linecap="round"/>
+             <path d="M110,113 L132,108" stroke="#1B1B1B" stroke-width="2.2" stroke-linecap="round"/>`;
+      lips=`<path d="M90,144 Q100,140 110,144" stroke="#7A1818" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      // 手指敲桌
+      arms=`<g stroke="#9B1C1C" stroke-width="13" stroke-linecap="round" fill="none">
+              <path d="M155,160 Q140,170 130,178"/>
+            </g>
+            <circle cx="130" cy="180" r="8" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>
+            <line x1="130" y1="184" x2="130" y2="196" stroke="#9B1C1C" stroke-width="3" stroke-linecap="round"/>`;
+      // 叶蒂微颤动效
+      extras=`<path d="M82,40 C80,42 84,42 82,40" stroke="#5A8A48" stroke-width=".5" opacity=".4">
+              <animate attributeName="opacity" values="0.4;0.1;0.4" dur="0.6s" repeatCount="indefinite"/>
+            </path>`;
+      break;
+    case STAGE.BROKEN:
+      leaves=leavesNormal;
+      eyes=`<ellipse cx="80" cy="121" rx="3" ry="3" fill="#1B1B1B"/>
+            <ellipse cx="120" cy="121" rx="3" ry="3" fill="#1B1B1B"/>
+            <!-- 眼线被泪痕拉长 -->
+            <path d="M68,118 Q72,123 76,126" stroke="#1B1B1B" stroke-width="1.2" fill="none"/>
+            <path d="M124,126 Q128,123 132,118" stroke="#1B1B1B" stroke-width="1.2" fill="none"/>
+            <!-- 泪滴 -->
+            <path d="M76,128 Q74,134 76,138 Q78,134 76,128 Z" fill="#7AC4E8" opacity=".85"/>
+            <path d="M124,128 Q122,134 124,138 Q126,134 124,128 Z" fill="#7AC4E8" opacity=".85"/>`;
+      brows=`<path d="M68,108 Q78,113 90,109" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>
+             <path d="M110,109 Q122,113 132,108" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      // 红唇发抖（波浪）
+      lips=`<path d="M90,144 Q95,148 100,143 Q105,148 110,144" stroke="#7A1818" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      // 抱臂松开
+      arms=`<g stroke="#9B1C1C" stroke-width="13" stroke-linecap="round" fill="none">
+              <path d="M50,180 Q60,200 70,205"/>
+              <path d="M150,180 Q140,200 130,205"/>
+            </g>
+            <circle cx="70" cy="207" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>
+            <circle cx="130" cy="207" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>`;
+      // 裂纹 + 渗汁
+      extras=`
+        <path d="M85,80 L90,110 L80,140 L88,170" stroke="#7A1818" stroke-width="1.5" fill="none" opacity=".7"/>
+        <path d="M120,75 L115,105 L125,135 L118,165" stroke="#7A1818" stroke-width="1.5" fill="none" opacity=".7"/>
+        <circle cx="90" cy="110" r="3" fill="#E64646" opacity=".9"/>
+        <circle cx="125" cy="135" r="3" fill="#E64646" opacity=".9"/>
+        <ellipse cx="92" cy="112" rx="2" ry="3" fill="#9B1C1C" opacity=".8"/>
+        <ellipse cx="123" cy="137" rx="2" ry="3" fill="#9B1C1C" opacity=".8"/>
+        <!-- 渗汁滴 -->
+        <path d="M88,170 Q86,176 88,180 Q90,176 88,170 Z" fill="#9B1C1C" opacity=".8"/>
+        <path d="M118,165 Q116,171 118,175 Q120,171 118,165 Z" fill="#9B1C1C" opacity=".8"/>`;
+      break;
+    case STAGE.REBORN:
+      leaves=leavesFlip;
+      eyes=`<ellipse cx="80" cy="119" rx="3.2" ry="4" fill="#1B1B1B"/>
+            <ellipse cx="120" cy="119" rx="3.2" ry="4" fill="#1B1B1B"/>`;
+      brows=`<path d="M70,105 Q80,101 90,105" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>
+             <path d="M110,105 Q120,101 130,105" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      lips=`<path d="M90,142 Q100,148 110,142" stroke="#7A1818" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      arms=`<g stroke="#9B1C1C" stroke-width="13" stroke-linecap="round" fill="none">
+              <path d="M155,150 Q160,120 145,90"/>
+            </g>
+            <circle cx="145" cy="90" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>`;
+      // 金牌 + 没有耳环
+      extras=`
+        <line x1="92" y1="60" x2="85" y2="80" stroke="#C9A24B" stroke-width="1.5"/>
+        <line x1="108" y1="60" x2="115" y2="80" stroke="#C9A24B" stroke-width="1.5"/>
+        <circle cx="100" cy="86" r="9" fill="#E5C570" stroke="#9B7A2B" stroke-width="1"/>
+        <text x="100" y="89" text-anchor="middle" font-size="8" fill="#9B7A2B" font-weight="bold">★</text>`;
+      break;
+    case STAGE.REST:
+      leaves=leavesNormal;
+      eyes=`<path d="M72,120 Q80,118 88,120" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M112,120 Q120,118 128,120" stroke="#1B1B1B" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      brows=`<path d="M70,106 L90,105" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round"/>
+             <path d="M110,105 L130,106" stroke="#1B1B1B" stroke-width="2" stroke-linecap="round"/>`;
+      lips=`<path d="M90,142 Q100,148 110,142" stroke="#7A1818" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      arms=`<g stroke="#9B1C1C" stroke-width="13" stroke-linecap="round" fill="none">
+              <path d="M50,170 Q70,160 100,160 Q130,160 150,170"/>
+            </g>
+            <circle cx="50" cy="170" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>
+            <circle cx="150" cy="170" r="9" fill="#E64646" stroke="#9B1C1C" stroke-width="1.5"/>`;
+      break;
+    default:
+      leaves=leavesNormal;
+      eyes='';brows='';lips='';arms='';
+  }
+
+  const earringHTML = (stage===STAGE.REBORN) ? '' : earring;
+  return `<svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
+    ${leaves}
+    ${body}
+    ${bodyHighlight}
+    ${belt}
+    ${glasses}
+    ${eyes}
+    ${brows}
+    ${lips}
+    ${mole}
+    ${earringHTML}
+    ${arms}
+    ${extras}
+  </svg>`;
+}
+
+// ---------- 4. 勋章 SVG（圆形金属描边+中心茄姐剪影） ----------
+function badgeSVG(unlocked, idx){
+  // 中心剪影：简化茄姐轮廓
+  const silhouette = `
+    <path d="M50,28 C35,28 28,42 28,58 C28,75 38,90 50,93 C62,90 72,75 72,58 C72,42 65,28 50,28 Z" fill="${unlocked?'#FAF6EC':'#BFB6A0'}"/>
+    <path d="M42,30 C36,25 30,30 33,38 M58,30 C64,25 70,30 67,38 M50,25 C48,21 46,23 50,28 C54,23 52,21 50,25 Z" fill="${unlocked?'#4B7A3A':'#9B9380'}"/>`;
+  const ring = unlocked
+    ? `<circle cx="50" cy="50" r="47" fill="url(#g${idx})" stroke="#9B7A2B" stroke-width="2"/>
+       <circle cx="50" cy="50" r="40" fill="#FAF6EC" stroke="#C9A24B" stroke-width="1.5"/>
+       <circle cx="50" cy="6" r="3" fill="#E5C570"/>`
+    : `<circle cx="50" cy="50" r="47" fill="#DCD3BD" stroke="#B5AC95" stroke-width="2"/>
+       <circle cx="50" cy="50" r="40" fill="#EFE6D2" stroke="#C5BBA1" stroke-width="1.5"/>`;
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g${idx}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#E5C570"/>
+        <stop offset="50%" stop-color="#C9A24B"/>
+        <stop offset="100%" stop-color="#9B7A2B"/>
+      </linearGradient>
+    </defs>
+    ${ring}
+    ${silhouette}
+  </svg>`;
+}
+
+// ---------- 5. 计时逻辑 ----------
+let timer={ running:false, paused:false, mode:'work', remaining:25*60, total:25*60, startedAt:0, breakValue:100, lastTick:0, whiteNoiseUsedThisSession:false };
+
+function fmt(sec){ const m=Math.floor(sec/60), s=sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+
+function startTimer(){
+  if(timer.running) return;
+  // 「中止后继续」：从中止时刻的剩余时间接着算；否则全新开始
+  const resumed = timer.paused && timer.mode==='work' && timer.remaining>0 && timer.remaining<timer.total;
+  if(!resumed){
+    timer.total=state.settings.workMin*60;
+    timer.remaining=timer.total;
+    timer.breakValue=100;
+    timer.whiteNoiseUsedThisSession=false;
+  }
+  timer.paused=false;
+  timer.running=true;
+  timer.mode='work';
+  timer.startedAt=Date.now();
+  timer.lastTick=Date.now();
+  document.getElementById('startBtn').textContent='中止';
+  document.getElementById('breakBtn').disabled=false;
+  document.getElementById('skipBtn').style.display='inline-block';
+  document.getElementById('countdown').textContent=fmt(timer.remaining);
+  updateBreakUI();
+  if(resumed){
+    // 按剩余时间恢复茄姐状态
+    if(timer.remaining<=300) setStage(STAGE.ALERT, '剩 '+Math.ceil(timer.remaining/60)+' 分钟，撑住。');
+    else if(timer.remaining<=timer.total*0.5) setStage(STAGE.STEADY, '还撑得住。');
+    else setStage(STAGE.READY, '继续，别废话。');
+  }else{
+    setStage(STAGE.READY, '开始了就别说废话。');
+  }
+  tick();
+}
+
+function stopTimer(manualBreak){
+  timer.running=false;
+  if(timer.tickId) clearTimeout(timer.tickId);
+  // 中止（非破防、工作中、还有剩余时间）→ 暂停，下次从剩余时间继续
+  timer.paused = !manualBreak && timer.mode==='work' && timer.remaining>0;
+  document.getElementById('startBtn').textContent = timer.paused ? '继续防御' : '开始防御';
+  document.getElementById('breakBtn').disabled=true;
+  document.getElementById('skipBtn').style.display = timer.paused ? 'inline-block' : 'none';
+  document.getElementById('countdown').classList.remove('shake');
+  if(!manualBreak) setStage(STAGE.READY, timer.paused ? '暂停了？行，我等你。' : '我等着看你表现。');
+}
+
+function tick(){
+  if(!timer.running) return;
+  const now=Date.now();
+  const elapsed=Math.floor((now-timer.lastTick)/1000);
+  if(elapsed>=1){
+    timer.lastTick=now;
+    timer.remaining-=elapsed;
+    // 破防值随时间流失
+    const ratio=1-(timer.remaining/timer.total);
+    timer.breakValue=Math.max(0, 100 - Math.round(ratio*70)); // 30% 时只剩 30，最后剩 30
+    updateBreakUI();
+    // 状态切换
+    if(timer.remaining<=300 && timer.remaining>0){
+      setStage(STAGE.ALERT, '剩 5 分钟，撑住。');
+    }else if(timer.remaining<=timer.total*0.5 && timer.remaining>300){
+      if(timer.currentStage!==STAGE.STEADY) setStage(STAGE.STEADY, '还撑得住。');
+    }
+    // 抖动
+    const cd=document.getElementById('countdown');
+    if(timer.remaining<=60 && timer.remaining>0) cd.classList.add('shake');
+    else cd.classList.remove('shake');
+  }
+  // 倒计时显示
+  document.getElementById('countdown').textContent=fmt(Math.max(0,timer.remaining));
+  if(timer.remaining<=0){
+    completePomodoro();
+    return;
+  }
+  timer.tickId=setTimeout(tick, 250);
+}
+
+function completePomodoro(){
+  timer.running=false;
+  timer.paused=false;
+  if(timer.tickId) clearTimeout(timer.tickId);
+  document.getElementById('startBtn').textContent='开始防御';
+  document.getElementById('breakBtn').disabled=true;
+  document.getElementById('skipBtn').style.display='none';
+  const minutes=state.settings.workMin;
+  // 更新今日
+  state.stats.today.pomodoros++;
+  state.stats.today.longestHold=Math.max(state.stats.today.longestHold, minutes*60);
+  state.stats.allTime.totalMinutes+=minutes;
+  // 连续天数
+  const t=today();
+  const last=state.stats.allTime.lastActiveDate;
+  if(last){
+    const diffDays=(new Date(t)-new Date(last))/(86400000);
+    if(diffDays===1) state.stats.allTime.streak++;
+    else if(diffDays>1) state.stats.allTime.streak=1;
+  }else{
+    state.stats.allTime.streak=1;
+  }
+  state.stats.allTime.lastActiveDate=t;
+  // 当月活跃
+  const month=t.slice(0,7);
+  if(!state.stats.allTime.monthActiveDays[month]) state.stats.allTime.monthActiveDays[month]={};
+  state.stats.allTime.monthActiveDays[month][t]=true;
+  // 白噪信徒连续计数
+  if(timer.whiteNoiseUsedThisSession){
+    state.stats.badgeProgress.whiteNoiseStreak=(state.stats.badgeProgress.whiteNoiseStreak||0)+1;
+  }else{
+    state.stats.badgeProgress.whiteNoiseStreak=0;
+  }
+  // 深夜守卫：0点后完成（凌晨 0-5 点）
+  const hour=new Date().getHours();
+  const midnight=hour>=0 && hour<5;
+  saveState();
+  checkBadges({ midnight });
+  // 演出
+  showRestOverlay();
+  setStage(STAGE.REBORN, REBORN_QUOTES[state.tone][Math.floor(Math.random()*REBORN_QUOTES[state.tone].length)]);
+  // 自动进入休息
+  if(state.settings.autoRest){
+    setTimeout(()=>startRest(), 3000);
+  }
+  refreshStatsUI();
+  refreshBadgeUI();
+}
+
+function triggerBreakdown(){
+  if(!timer.running && timer.mode!=='work') return;
+  // 破防值清零
+  timer.breakValue=0;
+  updateBreakUI();
+  // 破防演出
+  const quote=BREAKDOWN_QUOTES[state.tone][Math.floor(Math.random()*BREAKDOWN_QUOTES[state.tone].length)];
+  state.stats.today.breakdowns++;
+  state.stats.allTime.totalBreakdowns++;
+  state.stats.badgeProgress.lastBreakdownAt=Date.now();
+  state.logs.unshift({ time:nowHM()+' · '+today(), text:quote, tone:state.tone });
+  if(state.logs.length>200) state.logs=state.logs.slice(0,200);
+  saveState();
+  // 立刻反杀徽章检测
+  checkBadges({ comebackCheckAt:Date.now() });
+  showBreakOverlay(quote);
+  setStage(STAGE.BROKEN, quote);
+  stopTimer(true);
+  // 卡片震动
+  document.getElementById('tomatoCard').style.animation='bigShake .55s ease';
+  setTimeout(()=>{ document.getElementById('tomatoCard').style.animation=''; }, 600);
+  spawnParticles();
+  refreshStatsUI();
+  refreshBadgeUI();
+  renderLogs();
+}
+
+function startRest(){
+  timer.mode='rest';
+  timer.total=state.settings.restMin*60;
+  timer.remaining=timer.total;
+  timer.running=true;
+  timer.lastTick=Date.now();
+  setStage(STAGE.REST, '5分钟回血，别又刷起手机。');
+  document.getElementById('countdown').classList.add('resting');
+  document.getElementById('startBtn').textContent='结束休息';
+  document.getElementById('skipBtn').style.display='inline-block';
+  restTick();
+}
+
+function restTick(){
+  if(!timer.running || timer.mode!=='rest') return;
+  const now=Date.now();
+  const elapsed=Math.floor((now-timer.lastTick)/1000);
+  if(elapsed>=1){
+    timer.lastTick=now;
+    timer.remaining-=elapsed;
+  }
+  document.getElementById('countdown').textContent=fmt(Math.max(0,timer.remaining));
+  if(timer.remaining<=0){
+    endRest();
+    return;
+  }
+  setTimeout(restTick, 250);
+}
+
+function endRest(){
+  timer.running=false;
+  timer.paused=false;
+  timer.mode='work';
+  document.getElementById('countdown').classList.remove('resting');
+  document.getElementById('countdown').textContent=fmt(state.settings.workMin*60);
+  document.getElementById('startBtn').textContent='开始防御';
+  document.getElementById('skipBtn').style.display='none';
+  setStage(STAGE.READY, '我等着看你表现。');
+}
+
+function skipCurrent(){
+  if(timer.mode==='rest'){ endRest(); return; }
+  if(timer.running || timer.paused){
+    // 跳过 = 放弃当前回合，时间重新从满时长计算
+    timer.running=false;
+    timer.paused=false;
+    if(timer.tickId) clearTimeout(timer.tickId);
+    timer.total=state.settings.workMin*60;
+    timer.remaining=timer.total;
+    timer.breakValue=100;
+    updateBreakUI();
+    document.getElementById('countdown').textContent=fmt(timer.total);
+    document.getElementById('countdown').classList.remove('shake');
+    document.getElementById('startBtn').textContent='开始防御';
+    document.getElementById('breakBtn').disabled=true;
+    document.getElementById('skipBtn').style.display='none';
+    setStage(STAGE.READY, '跳过这回合，重新来。');
+  }
+}
+
+function setStage(stage, bubbleText){
+  timer.currentStage=stage;
+  const el=document.getElementById('tomatoStage');
+  el.innerHTML=tomatoSVG(stage, true, bubbleText);
+  // 状态标签
+  const labels={ready:'茄姐·备战',steady:'茄姐·稳态',alert:'茄姐·警戒',broken:'茄姐·破防',reborn:'茄姐·重生',rest:'茄姐·回血'};
+  document.getElementById('stageLabel').textContent=labels[stage]||'茄姐';
+}
+
+function updateBreakUI(){
+  const v=timer.breakValue;
+  document.getElementById('breakBar').style.width=v+'%';
+  document.getElementById('breakVal').textContent=v;
+  const tag=document.getElementById('breakTag');
+  const hint=document.getElementById('breakHint');
+  if(v>=70){ tag.textContent='满血'; hint.textContent='茄姐状态：稳如老狗'; }
+  else if(v>=40){ tag.textContent='警戒'; hint.textContent='茄姐状态：还能撑一会儿'; }
+  else if(v>=10){ tag.textContent='危险'; hint.textContent='茄姐状态：快要裂开'; }
+  else{ tag.textContent='濒破'; hint.textContent='茄姐状态：随时炸裂'; }
+}
+
+// ---------- 6. 破防演出 ----------
+function showBreakOverlay(quote){
+  document.getElementById('overlayCharacter').innerHTML=tomatoSVG(STAGE.BROKEN);
+  document.getElementById('overlayTitle').textContent='破防了';
+  document.getElementById('overlayQuote').textContent='「'+quote+'」';
+  const overlay=document.getElementById('overlay');
+  const panel=document.getElementById('overlayPanel');
+  overlay.classList.add('show');
+  panel.classList.add('shake');
+  setTimeout(()=>panel.classList.remove('shake'), 600);
+}
+function hideBreakOverlay(){
+  document.getElementById('overlay').classList.remove('show');
+  setStage(STAGE.READY, '想清楚再来。');
+}
+
+function showRestOverlay(){
+  const q=REST_QUOTES[state.tone][Math.floor(Math.random()*REST_QUOTES[state.tone].length)];
+  document.getElementById('restCharacter').innerHTML=tomatoSVG(STAGE.REBORN);
+  document.getElementById('restTitle').textContent='守住了一回合';
+  document.getElementById('restQuote').textContent='「'+q+'」';
+  document.getElementById('restOverlay').classList.add('show');
+}
+function hideRestOverlay(){
+  document.getElementById('restOverlay').classList.remove('show');
+}
+
+// 粒子效果
+function spawnParticles(){
+  const card=document.getElementById('tomatoCard');
+  const rect=card.getBoundingClientRect();
+  for(let i=0;i<24;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    const size=4+Math.random()*8;
+    p.style.width=size+'px';p.style.height=size+'px';
+    p.style.left=(rect.width/2)+'px';
+    p.style.top=(rect.height/2)+'px';
+    p.style.background=Math.random()<.6?'#D62828':'#E64646';
+    p.style.position='absolute';
+    p.style.zIndex='5';
+    card.appendChild(p);
+    const angle=Math.random()*Math.PI*2;
+    const dist=80+Math.random()*120;
+    const dx=Math.cos(angle)*dist;
+    const dy=Math.sin(angle)*dist;
+    p.animate([
+      {transform:'translate(0,0) scale(1)',opacity:1},
+      {transform:`translate(${dx}px,${dy}px) scale(0)`,opacity:0}
+    ],{duration:800+Math.random()*400,easing:'cubic-bezier(.2,.6,.4,1)'}).onfinish=()=>p.remove();
+  }
+}
+
+// ---------- 7. 白噪音（Web Audio API） ----------
+const noiseAudio={ ctx:null, nodes:{}, master:null };
+function ensureAudio(){
+  if(noiseAudio.ctx) return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  noiseAudio.ctx=new AC();
+  noiseAudio.master=noiseAudio.ctx.createGain();
+  noiseAudio.master.gain.value=parseFloat(document.getElementById('noiseVol').value)/100*0.4;
+  noiseAudio.master.connect(noiseAudio.ctx.destination);
+}
+function makeNoiseBuffer(ctx, type){
+  const len=ctx.sampleRate*2;
+  const buf=ctx.createBuffer(1, len, ctx.sampleRate);
+  const data=buf.getChannelData(0);
+  if(type==='white'){
+    for(let i=0;i<len;i++) data[i]=Math.random()*2-1;
+  }else if(type==='pink'){
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for(let i=0;i<len;i++){
+      const w=Math.random()*2-1;
+      b0=0.99886*b0+w*0.0555179;
+      b1=0.99332*b1+w*0.0750759;
+      b2=0.96900*b2+w*0.1538520;
+      b3=0.86650*b3+w*0.3104856;
+      b4=0.55000*b4+w*0.5329522;
+      b5=-0.76300*b5-w*0.0168980;
+      data[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;
+      b6=w*0.115926;
+    }
+  }else if(type==='brown'){
+    let last=0;
+    for(let i=0;i<len;i++){
+      const w=Math.random()*2-1;
+      last=(last+0.02*w)/1.02;
+      data[i]=last*3.5;
+    }
+  }
+  return buf;
+}
+function startNoise(type){
+  ensureAudio();
+  if(noiseAudio.ctx.state==='suspended') noiseAudio.ctx.resume();
+  if(noiseAudio.nodes[type]) return;
+  const ctx=noiseAudio.ctx;
+  const src=ctx.createBufferSource();
+  let bufType='white', filter=null, lfo=null, lfoGain=null;
+  if(type==='rain'){
+    bufType='white';
+    filter=ctx.createBiquadFilter();
+    filter.type='lowpass';filter.frequency.value=2400;filter.Q.value=0.7;
+  }else if(type==='ocean'){
+    bufType='brown';
+    filter=ctx.createBiquadFilter();
+    filter.type='lowpass';filter.frequency.value=600;
+    // LFO 调制音量模拟海浪起伏
+    lfo=ctx.createOscillator();lfo.frequency.value=0.1;
+    lfoGain=ctx.createGain();lfoGain.gain.value=0.3;
+    lfo.connect(lfoGain);
+  }else if(type==='keyboard'){
+    bufType='pink';
+    filter=ctx.createBiquadFilter();
+    filter.type='bandpass';filter.frequency.value=2200;filter.Q.value=0.5;
+  }else if(type==='cafe'){
+    bufType='pink';
+    filter=ctx.createBiquadFilter();
+    filter.type='lowpass';filter.frequency.value=1800;
+  }
+  src.buffer=makeNoiseBuffer(ctx, bufType);
+  src.loop=true;
+  const gain=ctx.createGain();
+  gain.gain.value=type==='ocean'?0.5:0.6;
+  src.connect(filter||gain);
+  if(filter) filter.connect(gain);
+  // 海浪 LFO 调制 gain
+  if(lfo && lfoGain){
+    lfoGain.connect(gain.gain);
+    lfo.start();
+  }
+  gain.connect(noiseAudio.master);
+  src.start();
+  noiseAudio.nodes[type]={src, filter, gain, lfo};
+  timer.whiteNoiseUsedThisSession=true;
+}
+function stopNoise(type){
+  const n=noiseAudio.nodes[type];
+  if(!n) return;
+  try{ n.src.stop(); }catch(e){}
+  if(n.lfo){ try{ n.lfo.stop(); }catch(e){} }
+  delete noiseAudio.nodes[type];
+}
+function setNoiseVolume(v){
+  if(noiseAudio.master) noiseAudio.master.gain.value=v/100*0.4;
+}
+
+// ---------- 8. 任务清单 ----------
+function renderTasks(){
+  const el=document.getElementById('taskList');
+  if(!state.tasks.length){
+    el.innerHTML='<div class="log-empty">还没有任务，先加一个吧。</div>';
+    return;
+  }
+  el.innerHTML=state.tasks.map(t=>`
+    <div class="task ${t.done?'done':''}">
+      <input type="checkbox" ${t.done?'checked':''} data-id="${t.id}">
+      <span>${escapeHTML(t.text)}</span>
+      <span class="pomo">${t.pomo||0} 番茄</span>
+      <button class="del" data-id="${t.id}" title="删除">×</button>
+    </div>
+  `).join('');
+  // 事件
+  el.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+      const id=e.target.dataset.id;
+      const task=state.tasks.find(t=>t.id===id);
+      if(task){ task.done=e.target.checked; saveState(); renderTasks(); }
+    });
+  });
+  el.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const id=e.target.dataset.id;
+      state.tasks=state.tasks.filter(t=>t.id!==id);
+      saveState(); renderTasks();
+    });
+  });
+}
+function addTask(text){
+  if(!text.trim()) return;
+  state.tasks.push({ id:'t'+Date.now(), text:text.trim(), pomo:0, done:false });
+  saveState(); renderTasks();
+}
+
+// 给当前任务加番茄（用于完成番茄后手动给任务+1，这里简化为弹出选择）
+function incrementTaskPomodoro(){
+  if(!state.tasks.length){ return; }
+  // 找到第一个未完成
+  const t=state.tasks.find(x=>!x.done);
+  if(t){ t.pomo=(t.pomo||0)+1; saveState(); renderTasks(); }
+}
+
+// ---------- 9. 破防日志 ----------
+function renderLogs(){
+  const el=document.getElementById('logList');
+  document.getElementById('logCount').textContent=state.logs.length+' 条';
+  if(!state.logs.length){
+    el.innerHTML='<div class="log-empty">还没有破防记录，挺住。</div>';
+    return;
+  }
+  el.innerHTML=state.logs.slice(0,50).map(l=>`
+    <div class="entry">
+      <span class="time">${l.time}</span>
+      <span class="text">「${escapeHTML(l.text)}」</span>
+    </div>
+  `).join('');
+}
+
+// ---------- 10. 统计 ----------
+function refreshStatsUI(){
+  document.getElementById('todayPomos').textContent=state.stats.today.pomodoros;
+  document.getElementById('todayBreaks').textContent=state.stats.today.breakdowns;
+  document.getElementById('todayLongest').textContent=Math.round(state.stats.today.longestHold/60);
+  document.getElementById('todayDate').textContent=today().slice(5);
+}
+
+function renderStatsView(tab){
+  const el=document.getElementById('statsContent');
+  if(tab==='today'){
+    el.innerHTML=`
+      <div class="stats-grid">
+        <div class="stat-block"><div class="v">${state.stats.today.pomodoros}</div><div class="l">今日番茄</div></div>
+        <div class="stat-block"><div class="v">${state.stats.today.breakdowns}</div><div class="l">今日破防</div></div>
+        <div class="stat-block"><div class="v">${Math.round(state.stats.today.longestHold/60)}</div><div class="l">最长守住(分)</div></div>
+      </div>
+      <div class="chart-card">
+        <h4>今日时间线</h4>
+        <div id="todayTimeline" style="font-size:13px;color:var(--ink-2);line-height:1.8;padding:8px 0;">
+          ${state.logs.filter(l=>l.time.endsWith(today())).map(l=>`<div>· ${l.time.split(' · ')[0]} 破防</div>`).join('') || '<div style="color:var(--muted);text-align:center;padding:20px 0;font-style:italic;">今日零破防，茄姐很满意。</div>'}
+        </div>
+      </div>`;
+    return;
+  }
+  if(tab==='week'){
+    // 7 天柱状
+    const days=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const hist=state.stats.history[key];
+      const pomo=key===state.stats.today.date?state.stats.today.pomodoros:(hist?hist.pomodoros:0);
+      const brk=key===state.stats.today.date?state.stats.today.breakdowns:(hist?hist.breakdowns:0);
+      days.push({ key, label:['日','一','二','三','四','五','六'][d.getDay()], pomo, brk });
+    }
+    const maxP=Math.max(1, ...days.map(d=>d.pomo));
+    const w=600, h=160, barW=60, gap=20;
+    const baseY=140;
+    let bars=days.map((d,i)=>{
+      const x=i*(barW+gap)+20;
+      const bh=d.pomo/maxP*120;
+      const y=baseY-bh;
+      return `<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="#D62828" rx="4"/>
+              <text x="${x+barW/2}" y="${baseY+14}" text-anchor="middle" font-size="11" fill="#3A3A3A">${d.label}</text>
+              <text x="${x+barW/2}" y="${y-6}" text-anchor="middle" font-size="11" fill="#9B1C1C" font-weight="bold">${d.pomo}</text>`;
+    }).join('');
+    let breakdownBars=days.map((d,i)=>{
+      const x=i*(barW+gap)+20;
+      const bh=d.brk*8;
+      const y=baseY-bh;
+      if(bh<=0) return '';
+      return `<rect x="${x+barW/2-8}" y="${y}" width="16" height="${bh}" fill="#1B1B1B" rx="2"/>`;
+    }).join('');
+    el.innerHTML=`
+      <div class="stats-grid">
+        <div class="stat-block"><div class="v">${days.reduce((a,b)=>a+b.pomo,0)}</div><div class="l">本周番茄</div></div>
+        <div class="stat-block"><div class="v">${days.reduce((a,b)=>a+b.brk,0)}</div><div class="l">本周破防</div></div>
+        <div class="stat-block"><div class="v">${state.stats.allTime.streak}</div><div class="l">连续天数</div></div>
+      </div>
+      <div class="chart-card">
+        <h4>本周番茄分布</h4>
+        <svg viewBox="0 0 ${w} ${h+10}" preserveAspectRatio="xMidYMid meet">${bars}${breakdownBars}</svg>
+      </div>`;
+    return;
+  }
+  if(tab==='month'){
+    // 月内按周汇总折线 + 破防热力
+    const month=today().slice(0,7);
+    const daysInMonth=new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
+    const cells=[];
+    let weekPomos=[0,0,0,0,0,0];
+    let weekBreaks=[0,0,0,0,0,0];
+    for(let d=1; d<=daysInMonth; d++){
+      const key=month+'-'+String(d).padStart(2,'0');
+      const hist=state.stats.history[key];
+      const pomo=key===state.stats.today.date?state.stats.today.pomodoros:(hist?hist.pomodoros:0);
+      const brk=key===state.stats.today.date?state.stats.today.breakdowns:(hist?hist.breakdowns:0);
+      cells.push({ key, pomo, brk });
+      const wIdx=Math.floor((d-1)/7);
+      if(wIdx<6){ weekPomos[wIdx]+=pomo; weekBreaks[wIdx]+=brk; }
+    }
+    // 折线
+    const w=600, h=160;
+    const pts=weekPomos.map((v,i)=>{ const x=40+i*120; const y=140-Math.min(v*4, 120); return [x,y]; });
+    const path=pts.map((p,i)=>(i===0?'M':'L')+p[0]+','+p[1]).join(' ');
+    const labels=weekPomos.map((v,i)=>`<text x="${40+i*120}" y="158" text-anchor="middle" font-size="11" fill="#3A3A3A">第${i+1}周</text>
+                                       <text x="${40+i*120}" y="${140-Math.min(v*4,120)-6}" text-anchor="middle" font-size="11" fill="#9B1C1C" font-weight="bold">${v}</text>`).join('');
+    // 热力
+    const heatHtml=cells.map(c=>{
+      let cls='';
+      if(c.brk>=3) cls='l3';else if(c.brk===2) cls='l2';else if(c.brk===1) cls='l1';
+      return `<div class="cell ${cls}" title="${c.key}: ${c.pomo}番茄 / ${c.brk}破防"></div>`;
+    }).join('');
+    el.innerHTML=`
+      <div class="stats-grid">
+        <div class="stat-block"><div class="v">${weekPomos.reduce((a,b)=>a+b,0)}</div><div class="l">本月番茄</div></div>
+        <div class="stat-block"><div class="v">${weekBreaks.reduce((a,b)=>a+b,0)}</div><div class="l">本月破防</div></div>
+        <div class="stat-block"><div class="v">${state.stats.allTime.totalMinutes}</div><div class="l">累计分钟</div></div>
+      </div>
+      <div class="chart-card">
+        <h4>本月周折线（番茄数）</h4>
+        <svg viewBox="0 0 ${w} ${h+10}" preserveAspectRatio="xMidYMid meet">
+          <path d="${path}" stroke="#D62828" stroke-width="2" fill="none"/>
+          ${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="#D62828"/>`).join('')}
+          ${labels}
+        </svg>
+      </div>
+      <div class="chart-card">
+        <h4>本月破防热力（颜色越深破防越多）</h4>
+        <div class="heatmap">${heatHtml}</div>
+      </div>`;
+    return;
+  }
+}
+
+// ---------- 11. 勋章 ----------
+function checkBadges(ctx={}){
+  const newly=[];
+  const has=id=>state.badges.includes(id);
+  // 1 首位守擂
+  if(!has('first') && state.stats.allTime.totalMinutes>=25) newly.push('first');
+  // 2 三日不断
+  if(!has('streak3') && state.stats.allTime.streak>=3) newly.push('streak3');
+  // 3 七日不动如山
+  if(!has('streak7') && state.stats.allTime.streak>=7) newly.push('streak7');
+  // 4 破防新手
+  if(!has('break1') && state.stats.allTime.totalBreakdowns>=1) newly.push('break1');
+  // 5 破防大师
+  if(!has('break30') && state.stats.allTime.totalBreakdowns>=30) newly.push('break30');
+  // 6 深夜守卫
+  if(!has('midnight') && ctx.midnight) newly.push('midnight');
+  // 7 立刻反杀
+  if(!has('comeback') && ctx.comebackCheckAt){
+    const last=state.stats.badgeProgress.lastBreakdownAt;
+    // 这里其实是在破防时触发；真正反杀要在破防后1分钟内重启
+    // 所以这里只做记录，反杀徽章在 startTimer 时检测
+  }
+  // 8 千分钟
+  if(!has('k1000') && state.stats.allTime.totalMinutes>=1000) newly.push('k1000');
+  // 9 白噪信徒
+  if(!has('white5') && state.stats.badgeProgress.whiteNoiseStreak>=5) newly.push('white5');
+  // 10 满勤一月
+  const month=today().slice(0,7);
+  const monthDays=state.stats.allTime.monthActiveDays[month]||{};
+  if(!has('full20') && Object.keys(monthDays).length>=20) newly.push('full20');
+
+  newly.forEach(id=>{
+    state.badges.push(id);
+    showToast('解锁勋章：'+BADGES.find(b=>b.id===id).name, true);
+    // 高亮动画
+    setTimeout(()=>{
+      const el=document.querySelector('.badge[data-id="'+id+'"]');
+      if(el){ el.classList.add('just-unlocked'); setTimeout(()=>el.classList.remove('just-unlocked'), 500); }
+    }, 100);
+  });
+  if(newly.length) saveState();
+}
+
+// 检测立刻反杀：在 startTimer 时若距上次破防<=60秒
+function checkComeback(){
+  const last=state.stats.badgeProgress.lastBreakdownAt;
+  if(!last) return;
+  if(Date.now()-last<=60000 && !state.badges.includes('comeback')){
+    state.badges.push('comeback');
+    showToast('解锁勋章：立刻反杀', true);
+    saveState();
+  }
+}
+
+function renderBadges(){
+  const el=document.getElementById('badges');
+  el.innerHTML=BADGES.map((b,i)=>{
+    const unlocked=state.badges.includes(b.id);
+    return `<div class="badge ${unlocked?'unlocked':'locked'}" data-id="${b.id}" title="${b.desc}">
+      ${badgeSVG(unlocked, i)}
+      <div class="name">${b.name}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('badgeCount').textContent=state.badges.length;
+}
+
+function refreshBadgeUI(){ renderBadges(); }
+
+// ---------- 12. 语录 ----------
+function renderQuote(){
+  const q=QUOTES[state.tone][state.todayQuoteIdx%QUOTES[state.tone].length];
+  document.getElementById('quoteText').textContent='「'+q+'」';
+  document.getElementById('quoteTag').textContent=state.favs.includes(state.todayQuoteIdx+'_'+state.tone)?'已收藏':'可刷新';
+}
+function refreshQuote(){
+  let idx=Math.floor(Math.random()*QUOTES[state.tone].length);
+  while(idx===state.todayQuoteIdx && QUOTES[state.tone].length>1) idx=Math.floor(Math.random()*QUOTES[state.tone].length);
+  state.todayQuoteIdx=idx;
+  saveState();
+  renderQuote();
+}
+function favQuote(){
+  const key=state.todayQuoteIdx+'_'+state.tone;
+  if(state.favs.includes(key)){ state.favs=state.favs.filter(k=>k!==key); showToast('已取消收藏'); }
+  else{ state.favs.push(key); showToast('已收藏语录'); }
+  saveState();
+  renderQuote();
+}
+
+// ---------- 13. 通知 ----------
+let toastTimer=null;
+function showToast(text, isBadge){
+  const el=document.getElementById('toast');
+  el.textContent=text;
+  el.className='toast show'+(isBadge?' badge':'');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ el.classList.remove('show'); }, 2800);
+}
+
+// ---------- 14. 语气切换 ----------
+function applyTone(tone){
+  state.tone=tone;
+  document.getElementById('toneTag').textContent=tone==='sharp'?'扎心真实':'无厘头搞笑';
+  // 重置今日语录索引
+  state.todayQuoteIdx=state.todayQuoteIdx%QUOTES[tone].length;
+  saveState();
+  renderQuote();
+  // 状态气泡文案跟着换
+  const stageQuotes={
+    ready: tone==='sharp'?'我等着看你表现。':'番茄：你不动我不熟。',
+    steady: tone==='sharp'?'还撑得住。':'番茄：还行，没炸。',
+    alert: tone==='sharp'?'剩 5 分钟，撑住。':'番茄：快炸了快炸了。',
+    broken: tone==='sharp'?'看你这样，茄姐都替你累。':'番茄：噗——汁都喷出来了。',
+    reborn: REBORN_QUOTES[tone][0],
+    rest: tone==='sharp'?'5分钟回血，别又刷起手机。':'番茄：休息一下，别把我气炸了。'
+  };
+  if(timer.currentStage && stageQuotes[timer.currentStage]) setStage(timer.currentStage, stageQuotes[timer.currentStage]);
+}
+
+// ---------- 15. 视图切换 ----------
+function switchView(view){
+  document.querySelectorAll('.topbar .nav button[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.getElementById('mainView').style.display=view==='main'?'block':'none';
+  document.getElementById('statsView').classList.toggle('active', view==='stats');
+  if(view==='stats') renderStatsView(currentStatsTab);
+}
+let currentStatsTab='today';
+
+// ---------- 16. 工具 ----------
+function escapeHTML(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- 17. 初始化与事件绑定 ----------
+function init(){
+  rolloverIfNeeded();
+  // 若已选过语气，直接进主界面
+  if(state.tone && localStorage.getItem('pofang_tone_chosen')){
+    document.getElementById('tonePage').style.display='none';
+    document.getElementById('app').style.display='block';
+    applyTone(state.tone);
+    // 初始化 UI
+    setStage(STAGE.READY, '我等着看你表现。');
+    document.getElementById('countdown').textContent=fmt(state.settings.workMin*60);
+    updateBreakUI();
+    renderTasks();
+    renderLogs();
+    renderBadges();
+    renderQuote();
+    refreshStatsUI();
+  }
+}
+
+// 语气选择
+document.querySelectorAll('.tone-card').forEach(c=>{
+  c.addEventListener('click', ()=>{
+    const tone=c.dataset.tone;
+    state.tone=tone;
+    localStorage.setItem('pofang_tone_chosen','1');
+    saveState();
+    document.getElementById('tonePage').style.display='none';
+    document.getElementById('app').style.display='block';
+    applyTone(tone);
+    setStage(STAGE.READY, '开始了就别说废话。');
+    document.getElementById('countdown').textContent=fmt(state.settings.workMin*60);
+    updateBreakUI();
+    renderTasks();
+    renderLogs();
+    renderBadges();
+    renderQuote();
+    refreshStatsUI();
+  });
+});
+
+// 计时按钮
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  if(timer.running){
+    if(timer.mode==='rest'){ endRest(); }
+    else stopTimer(false);
+  }else{
+    checkComeback();
+    startTimer();
+  }
+});
+document.getElementById('breakBtn').addEventListener('click', triggerBreakdown);
+document.getElementById('skipBtn').addEventListener('click', skipCurrent);
+
+// 演出关闭
+document.getElementById('overlayClose').addEventListener('click', hideBreakOverlay);
+document.getElementById('restClose').addEventListener('click', hideRestOverlay);
+
+// 语录
+document.getElementById('refreshQuote').addEventListener('click', refreshQuote);
+document.getElementById('favQuote').addEventListener('click', favQuote);
+
+// 任务
+document.getElementById('addTask').addEventListener('click', ()=>{
+  const input=document.getElementById('taskInput');
+  addTask(input.value);
+  input.value='';
+});
+document.getElementById('taskInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ addTask(e.target.value); e.target.value=''; }
+});
+
+// 白噪音
+document.querySelectorAll('.noise-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const type=b.dataset.noise;
+    if(b.classList.contains('on')){
+      stopNoise(type);
+      b.classList.remove('on');
+    }else{
+      startNoise(type);
+      b.classList.add('on');
+    }
+    const anyOn=document.querySelectorAll('.noise-btn.on').length>0;
+    document.getElementById('noiseTag').textContent=anyOn?'播放中':'关闭';
+  });
+});
+document.getElementById('noiseVol').addEventListener('input', e=>setNoiseVolume(e.target.value));
+
+// 导航
+document.querySelectorAll('.topbar .nav button[data-view]').forEach(b=>{
+  b.addEventListener('click', ()=>switchView(b.dataset.view));
+});
+
+// 统计 tab
+document.querySelectorAll('.stats-tabs button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.stats-tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    currentStatsTab=b.dataset.tab;
+    renderStatsView(currentStatsTab);
+  });
+});
+
+// 设置
+document.getElementById('navSettings').addEventListener('click', ()=>{
+  document.getElementById('setTone').value=state.tone;
+  document.getElementById('setWork').value=state.settings.workMin;
+  document.getElementById('setRest').value=state.settings.restMin;
+  document.getElementById('setAutoRest').checked=state.settings.autoRest;
+  document.getElementById('settingsModal').classList.add('show');
+});
+document.getElementById('settingsCancel').addEventListener('click', ()=>document.getElementById('settingsModal').classList.remove('show'));
+document.getElementById('settingsSave').addEventListener('click', ()=>{
+  state.tone=document.getElementById('setTone').value;
+  state.settings.workMin=Math.max(15,Math.min(60,parseInt(document.getElementById('setWork').value)||25));
+  state.settings.restMin=Math.max(3,Math.min(20,parseInt(document.getElementById('setRest').value)||5));
+  state.settings.autoRest=document.getElementById('setAutoRest').checked;
+  saveState();
+  applyTone(state.tone);
+  // 暂停中不覆盖剩余时间的显示
+  if(!timer.running && !timer.paused) document.getElementById('countdown').textContent=fmt(state.settings.workMin*60);
+  document.getElementById('settingsModal').classList.remove('show');
+  showToast('设置已保存');
+});
+document.getElementById('resetData').addEventListener('click', ()=>{
+  if(confirm('确定清空所有数据？此操作不可撤销。')){
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('pofang_tone_chosen');
+    location.reload();
+  }
+});
+
+// 启动
+init();
+</script>
+</body>
+</html>
